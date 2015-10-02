@@ -10,7 +10,7 @@ swapdump.o: swapdump.asm constants.asm
 
 swapdump.gbc: swapdump.o
 	rgblink -o $@ $<
-	rgbfix -jv -i XXXX -k XX -l 0x33 -m 0x13 -p 0 -r 0 -t swapdump $@
+	rgbfix -jv -i XXXX -k XX -l 0x33 -m 0x13 -p 0 -r 2 -t swapdump $@
 
 clean:
 	rm -f swapdump.o swapdump.gbc

@@ -66,6 +66,7 @@ rIE EQU $ffff ; Interrupt Enable (R/W)
 ; Custom macro for easily selecting coordinates on screen
 W_MAP EQU $D000
 W_TMP_NAME EQU $D800
+W_OWNNAME EQU $D900
 
 ;\1 = X
 ;\2 = Y
@@ -96,11 +97,15 @@ H_JOYOLD EQU $fff9
 H_JOYNEW EQU $fffA
 
 callram: MACRO
-    call ($c000-$4000) + \1
+    call \1 + ($c000-$4000)
     ENDM
 
 jpram: MACRO
-    jp ($c000-$4000) + \1
+if _NARG == 2
+    jp \1, \2 + ($c000-$4000)
+else
+    jp \1 + ($c000-$4000)
+endc
     ENDM
 
 ldram: MACRO

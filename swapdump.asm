@@ -128,7 +128,12 @@ Start:
     ld de, $ff80
     ld bc, EndHRAMCode-HRAMCode
     call CopyData_
-
+    
+    ld hl, $0134
+    ld de, W_OWNNAME
+    ld bc, $10
+    call CopyData_
+    
     jpram StartRAM
 
 HRAMCode:
@@ -512,7 +517,7 @@ ClearScreen:
 CartswapString:
     db "   SWAPDUMP v0.1@"
 InstructionsString:
-    db "Loaded. Please@"
+    db "Loaded! Please@"
     db "remove cart and@"
     db "put in the one@"
     db "you want to dump.@"
@@ -526,11 +531,38 @@ CorrectString:
 ChangeString:
     db "Insert new cart,@"
     db "then press START.@"
+
+DoneDumpingString:
+    db "Done dumping!@"
+    
+    db "Please swap your@"
+    db "flashcart back in,@"
+    db "then press START.@"
+
     
 NotLogDataString:
     db "ERROR: Wrong@"
     db "logdata header@"
     db "(not LOG1).@"
+    
+ParseErrorString:
+    db "ERROR: Cannot@"
+    db "parse logdata.@"
+
+
+NotStartingROMString:
+    db "WARNING: ROM is@"
+    db "different from@"
+    db "the starting ROM."
+    
+    db "A=CONTINUE"
+    db "B=CHANGE"
+    
+DoneString:
+    db "   Data copied@"
+    db "    to SRAM!@"
+    db "  We should be@"
+    db " done here!  :D@"
 
 ReloadScreen:
     callram DisableLCD
@@ -540,12 +572,14 @@ ReloadScreen:
 StartRAM_:
 .begin
     callram EnableLCD
-    ld bc, $0001
-    ld de, $1311
-    callram DrawBox
+    callram DrawLargeBox
     ldram hl, CartswapString
     decoord 0, 0
     callram WriteString
+    
+    ldram hl, LogData
+    callram ReadLogDataHeader
+    jpram nz, NotLogData
     
     ldram hl, InstructionsString
     decoord 6, 1
@@ -563,21 +597,12 @@ StartRAM_:
 .waitnew
     call $ff80 ; wait for input
     
-    ld bc, $0001
-    ld de, $1303
-    callram DrawBox
+    callram DrawBoxWithROMName
+    
     ld bc, $0004
     ld de, $1311
     callram DrawBox
-    ld hl, $0134
-    ld de, W_TMP_NAME
-    ld bc, $10
-    callram CopyData
-    ld a, "@"
-    ld [de], a
-    ld hl, W_TMP_NAME
-    decoord 2, 1
-    callram WriteString
+    
     ldram hl, CorrectString
     decoord 5, 1
     callram WriteString
@@ -593,9 +618,7 @@ StartRAM_:
     cp $2
     jr nz, .joyloop
     
-    ld bc, $0001
-    ld de, $1311
-    callram DrawBox
+    callram DrawLargeBox
     ldram hl, ChangeString
     decoord 7, 1
     callram WriteString
@@ -606,13 +629,118 @@ StartRAM_:
 .dump
     ldram hl, LogData
     callram ReadLogDataHeader
-    jr nz, NotLogData
-    halt
+    jpram nz, NotLogData
     
-NotLogData:
+DoReadsWrites:
+    ld a, [hli]
+    cp "W"
+    jr z, DoWrite
+    cp "R"
+    jr z, DoRead
+    cp $0a
+    jr z, DoReadsWrites
+    ; TODO comments
+    and a
+    jpram z, DoEnd
+    dec hl
+    ld a, "?"
+    ld [hli], a
+.gonewline
+    ld a, [hli]
+    cp $0a
+    jr nz, .gonewline
+    jr DoReadsWrites
+DoWrite:
+    callram ReadWhitespace
+    callram ReadAsciiByte
+    ld d, a
+    callram ReadAsciiByte
+    ld e, a
+    callram ReadWhitespace
+    callram ReadAsciiByte
+    ld [de], a
+    callram ReadWhitespace
+    ld a, [hli]
+    cp "\n"
+    jpram nz, ParseError
+    jr DoReadsWrites
+DoRead:
+    callram ReadWhitespace
+    callram ReadAsciiByte
+    ld d, a
+    callram ReadAsciiByte
+    ld e, a
+    callram ReadWhitespace
+    ld a, [de]
+    callram WriteAsciiByte
+    callram ReadWhitespace
+    ld a, [hli]
+    cp "\n"
+    jpram nz, ParseError
+    jr DoReadsWrites
+    
+ReadWhitespace:
+.loop
+    ld a, [hli]
+    cp " "
+    jr z, .loop
+    cp $09 ; tab
+    jr z, .loop
+.notwhitespace
+    dec hl
+    ret
+
+ReadAsciiByte:
+    ld a, [hli]
+    sub "0"
+    cp $a
+    jr c, .nota
+    sub "A"-"0"
+.nota
+    swap a
+    ld b, a
+    ld a, [hli]
+    sub "0"
+    cp $a
+    jr c, .nota2
+    sub "A"-"0"
+.nota2
+    or b
+    ret
+
+
+WriteAsciiByte:
+    ld b, a
+    swap a
+    and a, $0f
+    cp $a
+    jr nc, .letter
+    add "0"
+    jr .write
+.letter
+    add "A"
+.write
+    ld [hli], a
+    
+    ld a, b
+    and a, $0f
+    cp $a
+    jr nc, .letter2
+    add "0"
+    jr .write2
+.letter2
+    add "A"
+.write2
+    ld [hli], a
+    ret
+    
+DrawLargeBox:
     ld bc, $0001
     ld de, $1311
-    callram DrawBox
+    jpram DrawBox
+    
+NotLogData:
+    callram DrawLargeBox
     
     ldram hl, NotLogDataString
     decoord 6, 1
@@ -620,6 +748,17 @@ NotLogData:
     decoord 7, 1
     callram WriteString
     decoord 8, 1
+    callram WriteString
+    callram ReloadScreen
+    halt
+
+ParseError:
+    callram DrawLargeBox
+    
+    ldram hl, ParseErrorString
+    decoord 6, 1
+    callram WriteString
+    decoord 7, 1
     callram WriteString
     callram ReloadScreen
     halt
@@ -641,7 +780,107 @@ ReadLogDataHeader:
     cp $0a
     ret
 
+DrawBoxWithROMName:
+    ld bc, $0001
+    ld de, $1303
+    callram DrawBox
+    ld hl, $0134
+    ld de, W_TMP_NAME
+    ld bc, $10
+    callram CopyData
+    ld a, "@"
+    ld [de], a
+    ld hl, W_TMP_NAME
+    decoord 2, 1
+    jpram WriteString
+
+DoEnd:
+    callram DrawLargeBox
+    
+    ldram hl, DoneDumpingString
+    decoord 6, 1
+    callram WriteString
+    decoord 8, 1
+    callram WriteString
+    decoord 9, 1
+    callram WriteString
+    decoord 10, 1
+    callram WriteString
+    callram ReloadScreen
+    call $ff80
+    
+    ld hl, $0134
+    ld de, W_TMP_NAME
+    ld bc, $10
+    callram CopyData
+    
+    ld c, $10
+    ld hl, W_TMP_NAME
+    ld de, W_OWNNAME
+.verifyloop
+    ld a, [hli]
+    ld b, a
+    ld a, [de]
+    inc de
+    cp b
+    jr nz, .wrong
+    dec c
+    jr nz, .verifyloop
+    jr .right
+.wrong
+    callram DrawBoxWithROMName
+    ldram hl, NotStartingROMString
+    decoord 6, 1
+    callram WriteString
+    decoord 8, 1
+    callram WriteString
+    decoord 9, 1
+    callram WriteString
+    
+    decoord 11, 1
+    callram WriteString
+    decoord 12, 1
+    callram WriteString
+    
+.joyloop
+    callram ReadJoypadRegister
+    ld a, [H_JOY]
+    cp $1
+    jr z, .right
+    cp $2
+    jr nz, .joyloop
+    jpram DoEnd
+    
+.right
+    ld a, $0a
+    ld [$0000], a
+    xor a
+    ld [$4000], a
+    ldram hl, LogData
+    ld de, $a000
+    ld bc, LogDataEnd-LogData
+    callram CopyData
+    xor a
+    ld [$0000], a
+    
+    callram DrawLargeBox
+    ldram hl, DoneString
+    decoord 7, 1
+    callram WriteString
+    decoord 8, 1
+    callram WriteString
+    decoord 9, 1
+    callram WriteString
+    decoord 10, 1
+    callram WriteString
+    
+    callram ReloadScreen
+    
+    halt
+    
+    
 LogData:
     INCBIN "logdata.txt"
+LogDataEnd
 
 EndRAMCode
