@@ -553,10 +553,10 @@ ParseErrorString:
 NotStartingROMString:
     db "WARNING: ROM is@"
     db "different from@"
-    db "the starting ROM."
+    db "the starting ROM.@"
     
-    db "A=CONTINUE"
-    db "B=CHANGE"
+    db "A=CONTINUE@"
+    db "B=CHANGE@"
     
 DoneString:
     db "   Data copied@"
@@ -829,18 +829,23 @@ DoEnd:
     jr .right
 .wrong
     callram DrawBoxWithROMName
+    ld bc, $0004
+    ld de, $1311
+    callram DrawBox
     ldram hl, NotStartingROMString
     decoord 6, 1
     callram WriteString
+    decoord 7, 1
+    callram WriteString
     decoord 8, 1
     callram WriteString
-    decoord 9, 1
-    callram WriteString
     
+    decoord 10, 1
+    callram WriteString
     decoord 11, 1
     callram WriteString
-    decoord 12, 1
-    callram WriteString
+    
+    callram ReloadScreen
     
 .joyloop
     callram ReadJoypadRegister
