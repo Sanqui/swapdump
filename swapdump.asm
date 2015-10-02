@@ -42,7 +42,7 @@ SECTION "romheader",HOME[$100]
 SECTION "start",HOME[$150]
 
 Tiles:
-    INCBIN "tiles.gb"
+    INCBIN "gfx/tiles.2bpp"
 TilesEnd
     
 DisableLCD_: ; $0061
@@ -114,13 +114,6 @@ Start:
     cp $00
     jr nz, .loop2
     
-    ld a, $98
-    ld [H_VCOPY_D], a
-    ld a, $D0
-    ld [H_VCOPY_H], a
-    ld a, $8
-    ld [H_VCOPY_ROWS], a
-    
     ld hl, Tiles
     ld de, $9000
     ld bc, TilesEnd-Tiles
@@ -157,51 +150,12 @@ RAMCode:
 StartRAM:
     jpram StartRAM_
 
-VBlankHandler:
-    push af
-    push bc
-    push de
-    push hl
-    callram CopyTilemap
-    callram ReadJoypadRegister
-    ld hl, H_TIMER
-    inc [hl]
-    ld a, [rDIV]
-    ld b, a
-    
-    ; derp
-    ld a, $00
-    ld [$FF1A], a
-    
-    pop hl
-    pop de
-    pop bc
-    pop af
-    reti
-
-CopyTilemap: ; We can copy just 8 lines per vblank.
-    ld a, [H_VNOCOPY]
-    and a
-    ret nz
+CopyTilemap:
 ; Contains an unrolled loop for speed.
-    ;ld de, $9800
-    ;ld hl, W_MAP
-    ld hl, H_VCOPY_D
-    ld a, [hli]
-    ld d, a
-    ld a, [hli]
-    ld e, a
-    ld a, [hli]
-    ld c, a
-    ld a, [hl]
-    ld l, a
-    ld h, c
-    ld a, [H_VCOPY_ROWS]
-    ld c, a
+    ld de, $9800
+    ld hl, W_MAP
+    ld c, 144/8
 .row
-
-    dec c
-    jr z, .done
 
     ld a, [hli]
     ld [de], a
@@ -270,41 +224,8 @@ CopyTilemap: ; We can copy just 8 lines per vblank.
     jr nc, .row
 ;carry
     inc d
-    jr .row
-.done
-    ld a, [H_VCOPY_TIMES]
-    inc a
-    ld [H_VCOPY_TIMES], a
-    cp a, $03
-    jr z, .reset
-    cp a, $02
-    jr nz, .eightrows
-    ; only 5 rows left
-    ld a, $5
-    ld [H_VCOPY_ROWS], a
-
-.eightrows
-    ld a, d
-    ld [H_VCOPY_D], a
-    ld a, e
-    ld [H_VCOPY_E], a
-    ld a, h
-    ld [H_VCOPY_H], a
-    ld a, l
-    ld [H_VCOPY_L], a
-    ret
-.reset
-    ld a, $98
-    ld [H_VCOPY_D], a
-    xor a
-    ld [H_VCOPY_E], a
-    ld a, $C0
-    ld [H_VCOPY_H], a
-    xor a
-    ld [H_VCOPY_L], a
-    ld [H_VCOPY_TIMES], a
-    ld a, $8
-    ld [H_VCOPY_ROWS], a
+    dec c
+    jr nz, .row
     ret
 
 DisableLCD: ; $0061
@@ -589,33 +510,30 @@ ClearScreen:
     ret
 
 CartswapString:
-    db "   CARTSWAP v0.1@"
+    db "   SWAPDUMP v0.1@"
 InstructionsString:
-    db "LOADED. PLEASE@"
-    db "REMOVE CART AND@"
-    db "PUT IN THE ONE@"
-    db "YOU WANT TO DUMP.@"
+    db "Loaded. Please@"
+    db "remove cart and@"
+    db "put in the one@"
+    db "you want to dump.@"
     
-    db "THEN PRESS START.@"
+    db "Then press START.@"
 
 CorrectString:
-    db "A=DUMP?@"
-    db "B=CHANGE?@"
+    db "A=DUMP@"
+    db "B=CHANGE@"
 
 ChangeString:
-    db "INSERT NEW CART@"
-    db "THEN PRESS START.@"
+    db "Insert new cart,@"
+    db "then press START.@"
+    
+NotLogDataString:
+    db "ERROR: Wrong@"
+    db "logdata header@"
+    db "(not LOG1).@"
 
 ReloadScreen:
-    ld a, $98
-    ld [H_VCOPY_D], a
-    ld a, $D0
-    ld [H_VCOPY_H], a
-    ld a, $8
-    ld [H_VCOPY_ROWS], a
     callram DisableLCD
-    callram CopyTilemap
-    callram CopyTilemap
     callram CopyTilemap
     jpram EnableLCD
 
@@ -625,11 +543,11 @@ StartRAM_:
     ld bc, $0001
     ld de, $1311
     callram DrawBox
-    ld hl, CartswapString
+    ldram hl, CartswapString
     decoord 0, 0
     callram WriteString
     
-    ld hl, InstructionsString
+    ldram hl, InstructionsString
     decoord 6, 1
     callram WriteString
     decoord 7, 1
@@ -660,7 +578,7 @@ StartRAM_:
     ld hl, W_TMP_NAME
     decoord 2, 1
     callram WriteString
-    ld hl, CorrectString
+    ldram hl, CorrectString
     decoord 5, 1
     callram WriteString
     decoord 6, 1
@@ -678,20 +596,52 @@ StartRAM_:
     ld bc, $0001
     ld de, $1311
     callram DrawBox
-    ld hl, ChangeString
+    ldram hl, ChangeString
     decoord 7, 1
     callram WriteString
     decoord 8, 1
     callram WriteString
     callram ReloadScreen
-    jp .waitnew
+    jpram .waitnew
 .dump
-    
+    ldram hl, LogData
+    callram ReadLogDataHeader
+    jr nz, NotLogData
     halt
     
+NotLogData:
+    ld bc, $0001
+    ld de, $1311
+    callram DrawBox
     
-
-EndRAMCode
+    ldram hl, NotLogDataString
+    decoord 6, 1
+    callram WriteString
+    decoord 7, 1
+    callram WriteString
+    decoord 8, 1
+    callram WriteString
+    callram ReloadScreen
+    halt
+    
+ReadLogDataHeader:
+    ld a, [hli]
+    cp "L"
+    ret nz
+    ld a, [hli]
+    cp "O"
+    ret nz
+    ld a, [hli]
+    cp "G"
+    ret nz
+    ld a, [hli]
+    cp "1"
+    ret nz
+    ld a, [hli]
+    cp $0a
+    ret
 
 LogData:
     INCBIN "logdata.txt"
+
+EndRAMCode

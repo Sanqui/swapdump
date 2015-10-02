@@ -90,17 +90,7 @@ hlcoord: MACRO
     
 ; Other variables
 
-H_VCOPY_D EQU $FFa0
-H_VCOPY_E EQU $FFa1
-H_VCOPY_H EQU $FFa2
-H_VCOPY_L EQU $FFa3
-H_VCOPY_TIMES EQU $FFa4
-H_VCOPY_ROWS EQU $FFa5
-H_VNOCOPY EQU $FFa6
 
-
-H_TIMER EQU $FFF0
-H_RNG1 EQU $FFF1
 H_JOY EQU $fff8
 H_JOYOLD EQU $fff9
 H_JOYNEW EQU $fffA
@@ -111,4 +101,8 @@ callram: MACRO
 
 jpram: MACRO
     jp ($c000-$4000) + \1
+    ENDM
+
+ldram: MACRO
+    ld \1, ($c000-$4000) + \2
     ENDM

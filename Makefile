@@ -3,14 +3,14 @@ export LC_CTYPE=C
 
 .SUFFIXES: .asm .o .gbc
 
-all: cartswap.gbc
+all: swapdump.gbc
 
-cartswap.o: cartswap.asm constants.asm
-	rgbasm -o cartswap.o cartswap.asm
+swapdump.o: swapdump.asm constants.asm
+	rgbasm -o swapdump.o swapdump.asm
 
-cartswap.gbc: cartswap.o
+swapdump.gbc: swapdump.o
 	rgblink -o $@ $<
-	rgbfix -jv -i XXXX -k XX -l 0x33 -m 0x13 -p 0 -r 0 -t CARTSWAP $@
+	rgbfix -jv -i XXXX -k XX -l 0x33 -m 0x13 -p 0 -r 0 -t swapdump $@
 
 clean:
-	rm -f cartswap.o cartswap.gbc
+	rm -f swapdump.o swapdump.gbc
