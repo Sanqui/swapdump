@@ -149,7 +149,7 @@ HRAMCode:
 	ret
 EndHRAMCode
 
-SECTION "bank2",ROMX,BANK[$1]
+SECTION "bank1",ROMX,BANK[$1]
 RAMCode:
 
 StartRAM:
@@ -267,24 +267,6 @@ CopyData:
 	or b
 	jr nz,CopyData
 	ret
-
-CopyDataFF:
-; copy data from hl to de ending with $ff (inclusive)
-	ld a,[hli]
-	ld [de],a
-	inc de
-	inc a
-	ret z
-	jr CopyDataFF
-
-WriteDataInc:
-; write data in hl increasing a until b.
-.loop
-    ld [hli], a
-    inc a
-    cp a, b
-    jr nz, .loop
-    ret
 
 WriteBTimes:
 ; write a in hl b times
@@ -446,77 +428,6 @@ WriteString:
     jr .loop
 .done
     ret
-   
-ModuloB:
-.loop
-    cp a, b
-    ret c
-    sub a, b
-    jr .loop
-
-DivB:
-    ld c, 0
-.loop
-    cp a, b
-    jr c, .ret
-    sub a, b
-    inc c
-    jr .loop
-.ret
-    ld a, c
-    ret
-    
-WriteNumber: ; writes number to de
-    push af
-    ld b, 10
-    callram DivB
-    add a, $30
-    ld [de], a
-    inc de
-    pop af
-    callram ModuloB
-    add a, $30
-    ld [de], a
-    ret
-
-WriteHexNumber: ; writes hex number to de
-    push af
-    swap a
-    and a, $0f
-    cp $a
-    jr nc, .ten
-    add a, $30
-    jr .write1
-.ten
-    add a, $37
-.write1
-    ld [de], a
-    inc de
-    pop af
-    and a, $0f
-    cp $a
-    jr nc, .ten2
-    add a, $30
-    jr .write2
-.ten2
-    add a, $37
-.write2
-    ld [de], a
-    inc de
-    ret
-
-ClearScreen:
-    ld hl, $c000
-.loop
-    xor a
-    ld [hli], a
-    ld a, h
-    cp $c1
-    jr nz, .loop
-    ld a, l
-    cp $68
-    jr nz, .loop
-    ret
 
 CartswapString:
     db "   SWAPDUMP v0.1@"
@@ -646,6 +557,8 @@ StartRAM_:
     ldram hl, LogData
     callram ReadLogDataHeader
     jpram nz, NotLogData
+    ld a, "O"
+    ld [hli], a
     
 DoReadsWrites::
     ld a, [hli]
@@ -794,7 +707,7 @@ ReadLogDataHeader:
     cp "1"
     ret nz
     ld a, [hli]
-    cp $0a
+    cp " "
     ret
 
 DrawBoxWithROMName:
