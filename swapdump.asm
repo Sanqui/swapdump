@@ -435,6 +435,8 @@ WriteString:
     jr z, .done
     cp a, $0a
     jr z, .done
+    and a
+    jr z, .done
     cp a, " "
     jr nz, .nospace
     ld a, 0
@@ -529,6 +531,7 @@ InstructionsString:
 CorrectString:
     db "A=DUMP@"
     db "B=CHANGE@"
+    db "SELECT=VIEW@"
 
 ChangeString:
     db "Insert new cart,@"
@@ -537,8 +540,8 @@ ChangeString:
 DoneDumpingString:
     db "Done dumping!@"
     
-    db "Please swap your@"
-    db "flashcart back in,@"
+    db "Please swap a@"
+    db "target cartridge,@"
     db "then press START.@"
 
     
@@ -559,13 +562,15 @@ NotStartingROMString:
     
     db "A=CONTINUE@"
     db "B=CHANGE@"
-    db "SELECT=DISPLAY@"
+    db "SELECT=VIEW@"
     
 DoneString:
     db "   Data copied@"
     db "    to SRAM!@"
     db "  We should be@"
     db " done here!  :D@"
+    
+    db "ANY=VIEW@"
 
 ReloadScreen:
     callram DisableLCD
@@ -600,6 +605,7 @@ StartRAM_:
 .waitnew
     call $ff80 ; wait for input
     
+.giveoptions
     callram DrawBoxWithROMName
     
     ld bc, $0004
@@ -611,15 +617,22 @@ StartRAM_:
     callram WriteString
     decoord 6, 1
     callram WriteString
+    decoord 7, 1
+    callram WriteString
     callram ReloadScreen
     
 .joyloop
     callram ReadJoypadRegister
-    ld a, [H_JOY]
+    ld a, [H_JOYNEW]
     cp $1
     jr z, .dump
     cp $2
+    jr z, .change
+    cp $4
     jr nz, .joyloop
+    callram Viewer
+    jr .giveoptions
+.change
     
     callram DrawLargeBox
     ldram hl, ChangeString
@@ -855,14 +868,15 @@ DoEnd:
     
 .joyloop
     callram ReadJoypadRegister
-    ld a, [H_JOY]
+    ld a, [H_JOYNEW]
     cp $1
     jr z, .right
     cp $2
     jp z, DoEnd
     cp $4
-    jr z, Display
-    jr .joyloop
+    jr nz, .joyloop
+    callram Viewer
+    jr .wrong
     
 .right
     ld a, $0a
@@ -886,19 +900,42 @@ DoEnd:
     callram WriteString
     decoord 10, 1
     callram WriteString
+    decoord 12, 1
+    callram WriteString
     
     callram ReloadScreen
     
-    halt
+.endloop
+    callram ReadJoypadRegister
+    ld a, [H_JOYNEW]
+    and a
+    call nz, Viewer
+    jr .endloop
 
-Display::
+Viewer::
     xor a
     ld [H_DISPLAYTOPLINE], a
+    ld [H_LASTLINE], a
     ldram hl, LogData
     ld a, l
     ld [H_DISPLAYPOS], a
     ld a, h
     ld [H_DISPLAYPOS+1], a
+    
+.countlines
+    ld b, 0
+.countloop
+    ld a, [hli]
+    and a
+    jr z, .donecounting
+    cp $0a
+    jr nz, .countloop
+    inc b
+    jr .countloop
+.donecounting
+    ld a, b
+    dec a
+    ld [H_LASTLINE], a
     
 .render
     xor a
@@ -924,6 +961,20 @@ Display::
     cp 16
     jr nz, .printloop
     
+    ld bc, $0e10
+    ld de, $1312
+    callram DrawBox
+    hlcoord $11, $0f
+    ld a, [H_DISPLAYTOPLINE]
+    call WriteAsciiByte
+    ld a, "/"
+    ld [hli], a
+    ld a, [H_LASTLINE]
+    call WriteAsciiByte
+    hlcoord $10, $13
+    ld a, $11
+    ld [hl], a
+    
     callram ReloadScreen
     
 .joyloop
@@ -933,6 +984,8 @@ Display::
     jr nz, .up
     bit 7, a
     jr nz, .down
+    bit 1, a
+    ret nz
     jr .joyloop
 .up
     ld a, [H_DISPLAYTOPLINE]
@@ -945,10 +998,12 @@ Display::
     ld a, [H_DISPLAYPOS+1]
     ld h, a
     dec hl
+    dec hl
 .lastnlloop
     ld a, [hld]
     cp $0a
     jr nz, .lastnlloop
+    inc hl
     inc hl
     ld a, l
     ld [H_DISPLAYPOS], a
@@ -956,7 +1011,11 @@ Display::
     ld [H_DISPLAYPOS+1], a
     jr .render
 .down
+    ld a, [H_LASTLINE]
+    ld b, a
     ld a, [H_DISPLAYTOPLINE]
+    cp b
+    jr nc, .joyloop
     inc a
     ld [H_DISPLAYTOPLINE], a
     
@@ -972,7 +1031,7 @@ Display::
     ld [H_DISPLAYPOS], a
     ld a, h
     ld [H_DISPLAYPOS+1], a
-    jr .render
+    jpram .render
     
     halt
 
