@@ -696,7 +696,7 @@ ReadAsciiByte:
     sub "0"
     cp $a
     jr c, .nota
-    sub "A"-"0"
+    sub 7
 .nota
     swap a
     ld b, a
@@ -704,7 +704,7 @@ ReadAsciiByte:
     sub "0"
     cp $a
     jr c, .nota2
-    sub "A"-"0"
+    sub 7
 .nota2
     or b
     ret
@@ -719,7 +719,7 @@ WriteAsciiByte:
     add "0"
     jr .write
 .letter
-    add "A"
+    add "A"-$0a
 .write
     ld [hli], a
     
@@ -730,7 +730,7 @@ WriteAsciiByte:
     add "0"
     jr .write2
 .letter2
-    add "A"
+    add "A"-$0a
 .write2
     ld [hli], a
     ret
