@@ -631,15 +631,16 @@ StartRAM_:
     callram ReadLogDataHeader
     jpram nz, NotLogData
     
-DoReadsWrites:
+DoReadsWrites::
     ld a, [hli]
     cp "W"
     jr z, DoWrite
     cp "R"
     jr z, DoRead
+    cp ";"
+    jr z, .gonewline
     cp $0a
     jr z, DoReadsWrites
-    ; TODO comments
     and a
     jpram z, DoEnd
     dec hl
