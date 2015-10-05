@@ -433,6 +433,8 @@ WriteString:
     ld a, [hli]
     cp a, "@"
     jr z, .done
+    cp a, $0a
+    jr z, .done
     cp a, " "
     jr nz, .nospace
     ld a, 0
@@ -557,6 +559,7 @@ NotStartingROMString:
     
     db "A=CONTINUE@"
     db "B=CHANGE@"
+    db "SELECT=DISPLAY@"
     
 DoneString:
     db "   Data copied@"
@@ -824,7 +827,7 @@ DoEnd:
     ld a, [de]
     inc de
     cp b
-    jr nz, .wrong
+    jr  .wrong ; nz !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     dec c
     jr nz, .verifyloop
     jr .right
@@ -845,6 +848,8 @@ DoEnd:
     callram WriteString
     decoord 11, 1
     callram WriteString
+    decoord 12, 1
+    callram WriteString
     
     callram ReloadScreen
     
@@ -854,8 +859,10 @@ DoEnd:
     cp $1
     jr z, .right
     cp $2
-    jr nz, .joyloop
-    jpram DoEnd
+    jp z, DoEnd
+    cp $4
+    jr z, Display
+    jr .joyloop
     
 .right
     ld a, $0a
@@ -883,8 +890,109 @@ DoEnd:
     callram ReloadScreen
     
     halt
+
+Display::
+    xor a
+    ld [H_DISPLAYTOPLINE], a
+    ldram hl, LogData
+    ld a, l
+    ld [H_DISPLAYPOS], a
+    ld a, h
+    ld [H_DISPLAYPOS+1], a
+    
+.render
+    xor a
+    ld [H_DISPLAYLINE], a
+    ld bc, $0001
+    ld de, $1312
+    callram DrawBox
+    
+    ld a, [H_DISPLAYPOS]
+    ld l, a
+    ld a, [H_DISPLAYPOS+1]
+    ld h, a
+    
+.printloop
+    ld bc, 20
+    decoord 2, 1
+    ld a, [H_DISPLAYLINE]
+    callram Multiply
+    callram WriteString
+    ld a, [H_DISPLAYLINE]
+    inc a
+    ld [H_DISPLAYLINE], a
+    cp 16
+    jr nz, .printloop
+    
+    callram ReloadScreen
+    
+.joyloop
+    callram ReadJoypadRegister
+    ld a, [H_JOY]
+    bit 6, a
+    jr nz, .up
+    bit 7, a
+    jr nz, .down
+    jr .joyloop
+.up
+    ld a, [H_DISPLAYTOPLINE]
+    and a
+    jr z, .joyloop
+    dec a
+    ld [H_DISPLAYTOPLINE], a
+    ld a, [H_DISPLAYPOS]
+    ld l, a
+    ld a, [H_DISPLAYPOS+1]
+    ld h, a
+    dec hl
+.lastnlloop
+    ld a, [hld]
+    cp $0a
+    jr nz, .lastnlloop
+    inc hl
+    ld a, l
+    ld [H_DISPLAYPOS], a
+    ld a, h
+    ld [H_DISPLAYPOS+1], a
+    jr .render
+.down
+    ld a, [H_DISPLAYTOPLINE]
+    inc a
+    ld [H_DISPLAYTOPLINE], a
+    
+    ld a, [H_DISPLAYPOS]
+    ld l, a
+    ld a, [H_DISPLAYPOS+1]
+    ld h, a
+.nextnlloop
+    ld a, [hli]
+    cp $0a
+    jr nz, .nextnlloop
+    ld a, l
+    ld [H_DISPLAYPOS], a
+    ld a, h
+    ld [H_DISPLAYPOS+1], a
+    jr .render
+    
+    halt
+
+Multiply:
+    and a
+    ret z
+    push hl
+    push de
+    pop hl
+.loop
+    add hl, bc
+    dec a
+    jr nz, .loop
+    push hl
+    pop de
+    pop hl
+    ret
     
     
+    db $0a
 LogData:
     INCBIN "logdata.txt"
 LogDataEnd

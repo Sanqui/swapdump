@@ -91,6 +91,9 @@ hlcoord: MACRO
     
 ; Other variables
 
+H_DISPLAYPOS EQU $ffa0
+H_DISPLAYLINE EQU $ffa2
+H_DISPLAYTOPLINE EQU $ffa3
 
 H_JOY EQU $fff8
 H_JOYOLD EQU $fff9
