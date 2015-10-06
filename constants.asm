@@ -65,8 +65,10 @@ rIE EQU $ffff ; Interrupt Enable (R/W)
 
 ; Custom macro for easily selecting coordinates on screen
 W_MAP EQU $D000
-W_TMP_NAME EQU $D800
-W_OWNNAME EQU $D900
+W_TMP_NAME EQU $D200
+W_OWNNAME EQU $D220
+
+W_BANKDATA EQU $D300
 
 ;\1 = X
 ;\2 = Y
@@ -95,6 +97,9 @@ H_DISPLAYPOS EQU $ffa0
 H_DISPLAYLINE EQU $ffa2
 H_DISPLAYTOPLINE EQU $ffa3
 H_LASTLINE EQU $ffa4
+H_CURBANK EQU $ffa5
+
+H_TMPSP EQU $fff0
 
 H_JOY EQU $fff8
 H_JOYOLD EQU $fff9

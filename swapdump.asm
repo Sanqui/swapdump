@@ -433,8 +433,8 @@ CartswapString:
     db "   SWAPDUMP v0.1@"
 InstructionsString:
     db "Loaded! Please@"
-    db "remove cart and@"
-    db "put in the one@"
+    db "remove cartridge@"
+    db "and put in the one@"
     db "you want to dump.@"
     
     db "Then press START.@"
@@ -555,6 +555,7 @@ StartRAM_:
     callram ReloadScreen
     jpram .waitnew
 .dump
+    callram ReadBankData
     ldram hl, LogData
     callram ReadLogDataHeader
     jpram nz, NotLogData
@@ -1006,6 +1007,59 @@ Sleep_:
     jr nz, .loop
     ret
     
+ReadBankData:
+    ld hl, W_BANKDATA
+    ld b, 0
+    
+.loop
+    ld a, b
+    ld [$2000], a
+    and $0f
+    callram z, UpdateScreenBank
+    push hl
+    callram ChecksumBank
+    pop hl
+    ld a, e
+    ld [hli], a
+    ld a, d
+    ld [hli], a
+    inc b
+    jr nz, .loop
+    ret
+    
+ChecksumBank:
+    ld [H_TMPSP], sp
+    ld sp, $4000
+    ld hl, $0000
+    xor a
+.loop
+rept 32
+    pop de
+    add hl, de
+endr
+    dec a
+    jr nz, .loop
+    ld e, l
+    ld d, h
+    ld a, [H_TMPSP]
+    ld l, a
+    ld a, [H_TMPSP+1]
+    ld h, a
+    ld sp, hl
+    ret
+    
+UpdateScreenBank:
+    push hl
+    push de
+    push bc
+    hlcoord $10, $11
+    ld a, b
+    callram WriteAsciiByte
+    callram ReloadScreen
+    pop bc
+    pop de
+    pop hl
+    ret
     
     db $0a
 LogData:
