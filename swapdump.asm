@@ -591,6 +591,7 @@ DoWrite:
     callram ReadAsciiByte
     ld [de], a
     callram ReadWhitespace
+    callram ReadComment
     ld a, [hli]
     cp "\n"
     jpram nz, ParseError
@@ -605,6 +606,7 @@ DoRead:
     ld a, [de]
     callram WriteAsciiByte
     callram ReadWhitespace
+    callram ReadComment
     ld a, [hli]
     cp "\n"
     jpram nz, ParseError
@@ -619,6 +621,23 @@ ReadWhitespace:
     jr z, .loop
 .notwhitespace
     dec hl
+    ret
+    
+ReadComment:
+.loop
+    ld a, [hl]
+    cp $0a
+    jr z, .end
+    ld a, [hli]
+    cp ";"
+    jpram nz, ParseError
+.nlloop
+    ld a, [hli]
+    cp $0a
+    jr nz, .nlloop
+    dec hl
+    ret
+.end
     ret
 
 ReadAsciiByte:
@@ -827,7 +846,7 @@ DoEnd:
     callram ReadJoypadRegister
     ld a, [H_JOYNEW]
     and a
-    call nz, Viewer
+    callram nz, Viewer
     jr .endloop
 
 Viewer::
