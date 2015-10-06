@@ -159,7 +159,7 @@ CopyTilemap:
 ; Contains an unrolled loop for speed.
     ld de, $9800
     ld hl, W_MAP
-    ld c, 144/8
+    ld c, 3
 .row
 
     ld a, [hli]
@@ -440,9 +440,9 @@ InstructionsString:
     db "Then press START.@"
 
 CorrectString:
-    db "A=DUMP@"
-    db "B=CHANGE@"
-    db "SELECT=VIEW@"
+    db "A = DUMP@"
+    db "B = SWAP@"
+    db "SELECT = VIEW@"
 
 ChangeString:
     db "Insert new cart,@"
@@ -471,9 +471,10 @@ NotStartingROMString:
     db "different from@"
     db "the starting ROM.@"
     
-    db "A=CONTINUE@"
-    db "B=CHANGE@"
-    db "SELECT=VIEW@"
+FinalChoicesString:
+    db "A = WRITE@"
+    db "B = SWAP@"
+    db "SELECT = VIEW@"
     
 DoneString:
     db "   Data copied@"
@@ -481,7 +482,7 @@ DoneString:
     db "  We should be@"
     db " done here!  :D@"
     
-    db "ANY=VIEW@"
+    db "ANY = VIEW@"
 
 ReloadScreen:
     callram DisableLCD
@@ -738,11 +739,17 @@ DoEnd:
     callram WriteString
     callram ReloadScreen
     call $ff80
-    
+
+.lastchoices
     ld hl, $0134
     ld de, W_TMP_NAME
     ld bc, $10
     callram CopyData
+    
+    callram DrawBoxWithROMName
+    ld bc, $0004
+    ld de, $1311
+    callram DrawBox
     
     ld c, $10
     ld hl, W_TMP_NAME
@@ -753,28 +760,26 @@ DoEnd:
     ld a, [de]
     inc de
     cp b
-    jr  .wrong ; nz !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    jr nz, .wrong
     dec c
     jr nz, .verifyloop
     jr .right
 .wrong
-    callram DrawBoxWithROMName
-    ld bc, $0004
-    ld de, $1311
-    callram DrawBox
     ldram hl, NotStartingROMString
-    decoord 6, 1
-    callram WriteString
-    decoord 7, 1
-    callram WriteString
-    decoord 8, 1
-    callram WriteString
-    
     decoord 10, 1
     callram WriteString
     decoord 11, 1
     callram WriteString
     decoord 12, 1
+    callram WriteString
+
+.right
+    ldram hl, FinalChoicesString
+    decoord 5, 1
+    callram WriteString
+    decoord 6, 1
+    callram WriteString
+    decoord 7, 1
     callram WriteString
     
     callram ReloadScreen
@@ -783,15 +788,15 @@ DoEnd:
     callram ReadJoypadRegister
     ld a, [H_JOYNEW]
     cp $1
-    jr z, .right
+    jr z, .write
     cp $2
-    jp z, DoEnd
+    jpram z, DoEnd
     cp $4
     jr nz, .joyloop
     callram Viewer
-    jr .wrong
+    jr .lastchoices
     
-.right
+.write
     ld a, $0a
     ld [$0000], a
     xor a
@@ -805,15 +810,15 @@ DoEnd:
     
     callram DrawLargeBox
     ldram hl, DoneString
+    decoord 6, 1
+    callram WriteString
     decoord 7, 1
     callram WriteString
     decoord 8, 1
     callram WriteString
     decoord 9, 1
     callram WriteString
-    decoord 10, 1
-    callram WriteString
-    decoord 12, 1
+    decoord 11, 1
     callram WriteString
     
     callram ReloadScreen
@@ -879,16 +884,17 @@ Viewer::
     callram DrawBox
     hlcoord $11, $0f
     ld a, [H_DISPLAYTOPLINE]
-    call WriteAsciiByte
+    callram WriteAsciiByte
     ld a, "/"
     ld [hli], a
     ld a, [H_LASTLINE]
-    call WriteAsciiByte
+    callram WriteAsciiByte
     hlcoord $10, $13
     ld a, $11
     ld [hl], a
     
     callram ReloadScreen
+    callram Sleep
     
 .joyloop
     callram ReadJoypadRegister
@@ -961,6 +967,24 @@ Multiply:
     push hl
     pop de
     pop hl
+    ret
+
+Sleep:
+    callram Sleep_
+    callram Sleep_
+Sleep_:
+    ld bc, $ffff
+.loop
+    push af
+    pop af
+    push af
+    pop af
+    push af
+    pop af
+    dec bc
+    ld a, b
+    and c
+    jr nz, .loop
     ret
     
     
