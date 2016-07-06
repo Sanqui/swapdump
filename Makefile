@@ -6,7 +6,7 @@ export LC_CTYPE=C
 all: swapdump.gbc
 
 swapdump.o: swapdump.asm constants.asm
-	rgbasm -o swapdump.o swapdump.asm
+	rgbasm -E -o swapdump.o swapdump.asm
 
 swapdump.gbc: swapdump.o
 	rgblink -o $@ -n swapdump.sym $<

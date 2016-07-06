@@ -443,6 +443,7 @@ CorrectString:
     db "A = DUMP@"
     db "B = SWAP@"
     db "SELECT = VIEW@"
+    db "@"
 
 ChangeString:
     db "Insert new cart,@"
@@ -475,6 +476,7 @@ FinalChoicesString:
     db "A = WRITE@"
     db "B = SWAP@"
     db "SELECT = VIEW@"
+    db "RIGHT = BANKS@"
     
 DoneString:
     db "   Data copied@"
@@ -531,7 +533,11 @@ StartRAM_:
     callram WriteString
     decoord 7, 1
     callram WriteString
+    decoord 8, 1
+    callram WriteString
     callram ReloadScreen
+    
+    callram ReadJoypadRegister
     
 .joyloop
     callram ReadJoypadRegister
@@ -801,6 +807,8 @@ DoEnd:
     callram WriteString
     decoord 7, 1
     callram WriteString
+    decoord 8, 1
+    callram WriteString
     
     callram ReloadScreen
     
@@ -811,9 +819,14 @@ DoEnd:
     jr z, .write
     cp $2
     jpram z, DoEnd
+    cp $10
+    jr z, .bankviewer
     cp $4
     jr nz, .joyloop
     callram Viewer
+    jr .lastchoices
+.bankviewer
+    callram BankViewer
     jr .lastchoices
     
 .write
@@ -973,6 +986,35 @@ Viewer::
     jpram .render
     
     halt
+
+BankViewer:
+    ld bc, $0001
+    ld de, $1312
+    callram DrawBox
+    
+    ld de, W_BANKDATA
+    ld c, 4*$11
+    hlcoord $1, 0
+.loopwrite
+    ld a, [de]
+    inc de
+    callram WriteAsciiByte
+    ld a, [de]
+    inc de
+    callram WriteAsciiByte
+    ld a, " "
+    ld [hli], a
+    dec c
+    jr nz, .loopwrite
+
+    callram ReloadScreen
+    callram Sleep
+.loop
+    callram ReadJoypadRegister
+    ld a, [H_JOYNEW]
+    and a
+    jr z, .loop
+    ret
 
 Multiply:
     and a
