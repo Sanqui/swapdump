@@ -119,9 +119,9 @@ Start:
     ld bc, TilesEnd-Tiles
     call CopyData_
     
-    ld hl, RAMCode
+    ld hl, $4000
     ld de, $c000
-    ld bc, EndRAMCode-RAMCode
+    ld bc, $1000
     call CopyData_
     
     ld hl, HRAMCode
@@ -134,7 +134,7 @@ Start:
     ld bc, $10
     call CopyData_
     
-    jpram StartRAM
+    jp StartRAM
 
 HRAMCode:
 .loop
@@ -149,11 +149,11 @@ HRAMCode:
 	ret
 EndHRAMCode
 
-SECTION "bank1",ROMX,BANK[$1]
-RAMCode:
+COPYSECTION "ram code", ROMX[$4000], BANK[$1]
 
+SECTION "ram code",WRAM0[$C000]
 StartRAM:
-    jpram StartRAM_
+    jp StartRAM_
 
 CopyTilemap:
 ; Contains an unrolled loop for speed.
@@ -359,7 +359,7 @@ GetTileAddr: ; bc = xy
     ret
 
 DrawBox: ; draws a box from bc to de
-    callram GetTileAddr ; top left corner
+    call GetTileAddr ; top left corner
     ld a, $10
     ld [hli], a
     ld a, d
@@ -368,7 +368,7 @@ DrawBox: ; draws a box from bc to de
     push bc
     ld b, a
     ld a, $11
-    callram WriteBTimes
+    call WriteBTimes
     ld a, $12
     ld [hli], a
     pop bc
@@ -378,7 +378,7 @@ DrawBox: ; draws a box from bc to de
     ld a, c
     cp e
     jr z, .last
-    callram GetTileAddr
+    call GetTileAddr
     ld a, $13
     ld [hli], a
     ld a, d
@@ -387,14 +387,14 @@ DrawBox: ; draws a box from bc to de
     push bc
     ld b, a
     ld a, $14
-    callram WriteBTimes
+    call WriteBTimes
     ld a, $15
     ld [hli], a
     pop bc
     jr .mid
     
 .last
-    callram GetTileAddr ; top left corner
+    call GetTileAddr ; top left corner
     ld a, $16
     ld [hli], a
     ld a, d
@@ -403,7 +403,7 @@ DrawBox: ; draws a box from bc to de
     push bc
     ld b, a
     ld a, $17
-    callram WriteBTimes
+    call WriteBTimes
     ld a, $18
     ld [hli], a
     pop bc
@@ -487,60 +487,60 @@ DoneString:
     db "ANY = VIEW@"
 
 ReloadScreen:
-    callram DisableLCD
-    callram CopyTilemap
-    jpram EnableLCD
+    call DisableLCD
+    call CopyTilemap
+    jp EnableLCD
 
 StartRAM_:
 .begin
-    callram EnableLCD
-    callram DrawLargeBox
-    ldram hl, CartswapString
+    call EnableLCD
+    call DrawLargeBox
+    ld hl, CartswapString
     decoord 0, 0
-    callram WriteString
+    call WriteString
     
-    ldram hl, LogData
-    callram ReadLogDataHeader
-    jpram nz, NotLogData
+    ld hl, LogData
+    call ReadLogDataHeader
+    jp nz, NotLogData
     
-    ldram hl, InstructionsString
+    ld hl, InstructionsString
     decoord 6, 1
-    callram WriteString
+    call WriteString
     decoord 7, 1
-    callram WriteString
+    call WriteString
     decoord 8, 1
-    callram WriteString
+    call WriteString
     decoord 9, 1
-    callram WriteString
+    call WriteString
     decoord 11, 1
-    callram WriteString
-    callram ReloadScreen
+    call WriteString
+    call ReloadScreen
   
 .waitnew
     call $ff80 ; wait for input
     
 .giveoptions
-    callram DrawBoxWithROMName
+    call DrawBoxWithROMName
     
     ld bc, $0004
     ld de, $1311
-    callram DrawBox
+    call DrawBox
     
-    ldram hl, CorrectString
+    ld hl, CorrectString
     decoord 5, 1
-    callram WriteString
+    call WriteString
     decoord 6, 1
-    callram WriteString
+    call WriteString
     decoord 7, 1
-    callram WriteString
+    call WriteString
     decoord 8, 1
-    callram WriteString
-    callram ReloadScreen
+    call WriteString
+    call ReloadScreen
     
-    callram ReadJoypadRegister
+    call ReadJoypadRegister
     
 .joyloop
-    callram ReadJoypadRegister
+    call ReadJoypadRegister
     ld a, [H_JOYNEW]
     cp $1
     jr z, .dump
@@ -548,23 +548,23 @@ StartRAM_:
     jr z, .change
     cp $4
     jr nz, .joyloop
-    callram Viewer
+    call Viewer
     jr .giveoptions
 .change
     
-    callram DrawLargeBox
-    ldram hl, ChangeString
+    call DrawLargeBox
+    ld hl, ChangeString
     decoord 7, 1
-    callram WriteString
+    call WriteString
     decoord 8, 1
-    callram WriteString
-    callram ReloadScreen
-    jpram .waitnew
+    call WriteString
+    call ReloadScreen
+    jp .waitnew
 .dump
-    callram ReadBankData
-    ldram hl, LogData
-    callram ReadLogDataHeader
-    jpram nz, NotLogData
+    call ReadBankData
+    ld hl, LogData
+    call ReadLogDataHeader
+    jp nz, NotLogData
     ld a, "O"
     ld [hli], a
     
@@ -579,7 +579,7 @@ DoReadsWrites::
     cp $0a
     jr z, DoReadsWrites
     and a
-    jpram z, DoEnd
+    jp z, DoEnd
     dec hl
     ld a, "?"
     ld [hli], a
@@ -589,34 +589,34 @@ DoReadsWrites::
     jr nz, .gonewline
     jr DoReadsWrites
 DoWrite:
-    callram ReadWhitespace
-    callram ReadAsciiByte
+    call ReadWhitespace
+    call ReadAsciiByte
     ld d, a
-    callram ReadAsciiByte
+    call ReadAsciiByte
     ld e, a
-    callram ReadWhitespace
-    callram ReadAsciiByte
+    call ReadWhitespace
+    call ReadAsciiByte
     ld [de], a
-    callram ReadWhitespace
-    callram ReadComment
+    call ReadWhitespace
+    call ReadComment
     ld a, [hli]
     cp "\n"
-    jpram nz, ParseError
+    jp nz, ParseError
     jr DoReadsWrites
 DoRead:
-    callram ReadWhitespace
-    callram ReadAsciiByte
+    call ReadWhitespace
+    call ReadAsciiByte
     ld d, a
-    callram ReadAsciiByte
+    call ReadAsciiByte
     ld e, a
-    callram ReadWhitespace
+    call ReadWhitespace
     ld a, [de]
-    callram WriteAsciiByte
-    callram ReadWhitespace
-    callram ReadComment
+    call WriteAsciiByte
+    call ReadWhitespace
+    call ReadComment
     ld a, [hli]
     cp "\n"
-    jpram nz, ParseError
+    jp nz, ParseError
     jr DoReadsWrites
     
 ReadWhitespace:
@@ -637,7 +637,7 @@ ReadComment:
     jr z, .end
     ld a, [hli]
     cp ";"
-    jpram nz, ParseError
+    jp nz, ParseError
 .nlloop
     ld a, [hli]
     cp $0a
@@ -694,30 +694,30 @@ WriteAsciiByte:
 DrawLargeBox:
     ld bc, $0001
     ld de, $1311
-    jpram DrawBox
+    jp DrawBox
     
 NotLogData:
-    callram DrawLargeBox
+    call DrawLargeBox
     
-    ldram hl, NotLogDataString
+    ld hl, NotLogDataString
     decoord 6, 1
-    callram WriteString
+    call WriteString
     decoord 7, 1
-    callram WriteString
+    call WriteString
     decoord 8, 1
-    callram WriteString
-    callram ReloadScreen
+    call WriteString
+    call ReloadScreen
     halt
 
 ParseError:
-    callram DrawLargeBox
+    call DrawLargeBox
     
-    ldram hl, ParseErrorString
+    ld hl, ParseErrorString
     decoord 6, 1
-    callram WriteString
+    call WriteString
     decoord 7, 1
-    callram WriteString
-    callram ReloadScreen
+    call WriteString
+    call ReloadScreen
     halt
     
 ReadLogDataHeader:
@@ -740,42 +740,42 @@ ReadLogDataHeader:
 DrawBoxWithROMName:
     ld bc, $0001
     ld de, $1303
-    callram DrawBox
+    call DrawBox
     ld hl, $0134
     ld de, W_TMP_NAME
     ld bc, $10
-    callram CopyData
+    call CopyData
     ld a, "@"
     ld [de], a
     ld hl, W_TMP_NAME
     decoord 2, 1
-    jpram WriteString
+    jp WriteString
 
 DoEnd:
-    callram DrawLargeBox
+    call DrawLargeBox
     
-    ldram hl, DoneDumpingString
+    ld hl, DoneDumpingString
     decoord 6, 1
-    callram WriteString
+    call WriteString
     decoord 8, 1
-    callram WriteString
+    call WriteString
     decoord 9, 1
-    callram WriteString
+    call WriteString
     decoord 10, 1
-    callram WriteString
-    callram ReloadScreen
+    call WriteString
+    call ReloadScreen
     call $ff80
 
 .lastchoices
     ld hl, $0134
     ld de, W_TMP_NAME
     ld bc, $10
-    callram CopyData
+    call CopyData
     
-    callram DrawBoxWithROMName
+    call DrawBoxWithROMName
     ld bc, $0004
     ld de, $1311
-    callram DrawBox
+    call DrawBox
     
     ld c, $10
     ld hl, W_TMP_NAME
@@ -791,42 +791,42 @@ DoEnd:
     jr nz, .verifyloop
     jr .right
 .wrong
-    ldram hl, NotStartingROMString
+    ld hl, NotStartingROMString
     decoord 10, 1
-    callram WriteString
+    call WriteString
     decoord 11, 1
-    callram WriteString
+    call WriteString
     decoord 12, 1
-    callram WriteString
+    call WriteString
 
 .right
-    ldram hl, FinalChoicesString
+    ld hl, FinalChoicesString
     decoord 5, 1
-    callram WriteString
+    call WriteString
     decoord 6, 1
-    callram WriteString
+    call WriteString
     decoord 7, 1
-    callram WriteString
+    call WriteString
     decoord 8, 1
-    callram WriteString
+    call WriteString
     
-    callram ReloadScreen
+    call ReloadScreen
     
 .joyloop
-    callram ReadJoypadRegister
+    call ReadJoypadRegister
     ld a, [H_JOYNEW]
     cp $1
     jr z, .write
     cp $2
-    jpram z, DoEnd
+    jp z, DoEnd
     cp $10
     jr z, .bankviewer
     cp $4
     jr nz, .joyloop
-    callram Viewer
+    call Viewer
     jr .lastchoices
 .bankviewer
-    callram BankViewer
+    call BankViewer
     jr .lastchoices
     
 .write
@@ -834,40 +834,40 @@ DoEnd:
     ld [$0000], a
     xor a
     ld [$4000], a
-    ldram hl, LogData
+    ld hl, LogData
     ld de, $a000
     ld bc, LogDataEnd-LogData
-    callram CopyData
+    call CopyData
     xor a
     ld [$0000], a
     
-    callram DrawLargeBox
-    ldram hl, DoneString
+    call DrawLargeBox
+    ld hl, DoneString
     decoord 6, 1
-    callram WriteString
+    call WriteString
     decoord 7, 1
-    callram WriteString
+    call WriteString
     decoord 8, 1
-    callram WriteString
+    call WriteString
     decoord 9, 1
-    callram WriteString
+    call WriteString
     decoord 11, 1
-    callram WriteString
+    call WriteString
     
-    callram ReloadScreen
+    call ReloadScreen
     
 .endloop
-    callram ReadJoypadRegister
+    call ReadJoypadRegister
     ld a, [H_JOYNEW]
     and a
-    callram nz, Viewer
+    call nz, Viewer
     jr .endloop
 
 Viewer::
     xor a
     ld [H_DISPLAYTOPLINE], a
     ld [H_LASTLINE], a
-    ldram hl, LogData
+    ld hl, LogData
     ld a, l
     ld [H_DISPLAYPOS], a
     ld a, h
@@ -893,7 +893,7 @@ Viewer::
     ld [H_DISPLAYLINE], a
     ld bc, $0001
     ld de, $1312
-    callram DrawBox
+    call DrawBox
     
     ld a, [H_DISPLAYPOS]
     ld l, a
@@ -904,8 +904,8 @@ Viewer::
     ld bc, 20
     decoord 2, 1
     ld a, [H_DISPLAYLINE]
-    callram Multiply
-    callram WriteString
+    call Multiply
+    call WriteString
     ld a, [H_DISPLAYLINE]
     inc a
     ld [H_DISPLAYLINE], a
@@ -914,23 +914,23 @@ Viewer::
     
     ld bc, $0e10
     ld de, $1312
-    callram DrawBox
+    call DrawBox
     hlcoord $11, $0f
     ld a, [H_DISPLAYTOPLINE]
-    callram WriteAsciiByte
+    call WriteAsciiByte
     ld a, "/"
     ld [hli], a
     ld a, [H_LASTLINE]
-    callram WriteAsciiByte
+    call WriteAsciiByte
     hlcoord $10, $13
     ld a, $11
     ld [hl], a
     
-    callram ReloadScreen
-    callram Sleep
+    call ReloadScreen
+    call Sleep
     
 .joyloop
-    callram ReadJoypadRegister
+    call ReadJoypadRegister
     ld a, [H_JOY]
     bit 6, a
     jr nz, .up
@@ -983,14 +983,14 @@ Viewer::
     ld [H_DISPLAYPOS], a
     ld a, h
     ld [H_DISPLAYPOS+1], a
-    jpram .render
+    jp .render
     
     halt
 
 BankViewer:
     ld bc, $0001
     ld de, $1312
-    callram DrawBox
+    call DrawBox
     
     ld de, W_BANKDATA
     ld c, 4*$11
@@ -998,19 +998,19 @@ BankViewer:
 .loopwrite
     ld a, [de]
     inc de
-    callram WriteAsciiByte
+    call WriteAsciiByte
     ld a, [de]
     inc de
-    callram WriteAsciiByte
+    call WriteAsciiByte
     ld a, " "
     ld [hli], a
     dec c
     jr nz, .loopwrite
 
-    callram ReloadScreen
-    callram Sleep
+    call ReloadScreen
+    call Sleep
 .loop
-    callram ReadJoypadRegister
+    call ReadJoypadRegister
     ld a, [H_JOYNEW]
     and a
     jr z, .loop
@@ -1032,8 +1032,8 @@ Multiply:
     ret
 
 Sleep:
-    callram Sleep_
-    callram Sleep_
+    call Sleep_
+    call Sleep_
 Sleep_:
     ld bc, $ffff
 .loop
@@ -1057,9 +1057,9 @@ ReadBankData:
     ld a, b
     ld [$2000], a
     and $0f
-    callram z, UpdateScreenBank
+    call z, UpdateScreenBank
     push hl
-    callram ChecksumBank
+    call ChecksumBank
     pop hl
     ld a, e
     ld [hli], a
@@ -1096,8 +1096,8 @@ UpdateScreenBank:
     push bc
     hlcoord $10, $11
     ld a, b
-    callram WriteAsciiByte
-    callram ReloadScreen
+    call WriteAsciiByte
+    call ReloadScreen
     pop bc
     pop de
     pop hl

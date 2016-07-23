@@ -104,23 +104,3 @@ H_TMPSP EQU $fff0
 H_JOY EQU $fff8
 H_JOYOLD EQU $fff9
 H_JOYNEW EQU $fffA
-
-callram: MACRO
-if _NARG == 2
-    call \1, \2 + ($c000-$4000)
-else
-    call \1 + ($c000-$4000)
-endc
-    ENDM
-
-jpram: MACRO
-if _NARG == 2
-    jp \1, \2 + ($c000-$4000)
-else
-    jp \1 + ($c000-$4000)
-endc
-    ENDM
-
-ldram: MACRO
-    ld \1, ($c000-$4000) + \2
-    ENDM
