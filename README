@@ -1,0 +1,9 @@
+`swapdump` is a diagnostic utility for Game Boy flashcarts.
+
+Via a simple ASCII file format, it can test writes and reads, and ouptut
+to a text file.  It also performs a checksum of ROM banks for verifying
+broken cartridges.
+
+Requires Sanqui's fork of rgbds to build: https://github.com/Sanqui/rgbds
+
+If you'd actually like to use this, don't hesitate to ask Sanqui for advice.
